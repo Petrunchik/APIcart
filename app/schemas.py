@@ -58,7 +58,7 @@ class UserCreate(BaseModel):
     role: str = Field(default="buyer", pattern="^(buyer|seller)$", description="Роль пользователя: buyer или seller")
 
 
-class UserAnswer(UserCreate):
+class UserAnswer(BaseModel):
     """
     Модель для ответа с данными пользователя.
     """
