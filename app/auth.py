@@ -39,7 +39,7 @@ def create_access_token(data: dict):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_async_db)):
+async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_async_db)):
     """
     Проверяет JWT и возвращает пользователя из базы.
     """
@@ -64,7 +64,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Dep
     except jwt.PyJWKError:
         raise credentials_exception
     
-    user = db.scalar(select(UserModel).where(
+    user = await db.scalar(select(UserModel).where(
         UserModel.email == email,
         UserModel.is_active == True
         ))
