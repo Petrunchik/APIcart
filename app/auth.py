@@ -11,7 +11,8 @@ from app.config import SECRET_KEY, ALGORITHM
 from app.db_depends import get_async_db
 
 
-ACCESS_TOKEN_EXPIRE_MINUTES = 20
+ACCESS_TOKEN_EXPIRE_MINUTES = 15
+REFRESH_TOKEN_EXPIRE_DAYS = 7
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="users/token")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -31,12 +32,19 @@ def verify_password(entered_password: str, hashed_password: str):
 
 def create_access_token(data: dict):
     """
-    Создает JWT с Payload
+    Создает access-токен
     """
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
+    to_encode.update({
+        "exp": expire,
+        "token_type": "access"
+    })
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def create_refresh_token():
+    ...
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_async_db)):
