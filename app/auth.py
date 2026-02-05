@@ -48,7 +48,7 @@ def create_refresh_token(data: dict):
     Создает refresh-токен с "token_type": "refresh"
     """
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode.update({
         "exp": expire,
         "token_type": "refresh"
