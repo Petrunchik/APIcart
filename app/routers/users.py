@@ -1,12 +1,14 @@
+import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.models.users import User as UserModel
-from app.schemas import UserCreate, UserAnswer
+from app.schemas import UserCreate, UserAnswer, RefreshTokenRequest
 from app.db_depends import get_async_db
-from app.auth import hash_password, verify_password, create_access_token
+from app.auth import hash_password, verify_password, create_access_token, create_refresh_token
+from app.config import SECRET_KEY, ALGORITHM
 
 router = APIRouter(
     prefix="/users",
@@ -53,4 +55,89 @@ async def login(
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"})
     access_token = create_access_token(data={"sub": user.email, "role": user.role, "id": user.id})
-    return {"access_token": access_token, "token_type": "Bearer"}
+    refresh_token = create_refresh_token(data={"sub": user.email, "role": user.role, "id": user.id})
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "Bearer"}
+
+
+@router.post("/refresh-token")
+async def refresh_token(
+    body: RefreshTokenRequest,
+    db: AsyncSession = Depends(get_async_db)):
+    """
+    Обновляет refresh-токен, принимая старый refresh-токен в теле запроса.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate refresh token",
+        headers={"WWW-Authenticate": "Bearer"}
+    )
+    old_refresh_token = body.refresh_token
+
+    try:
+        payload = jwt.decode(old_refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str | None = payload.get("sub")
+        token_type: str | None = payload.get("token_type")
+
+        if email is None or token_type != "refresh":
+            raise credentials_exception
+
+    except jwt.ExpiredSignatureError:
+        raise credentials_exception
+    except jwt.PyJWTError:
+        raise credentials_exception
+
+    result = await db.scalars(
+        select(UserModel).where(
+            UserModel.email == email,
+            UserModel.is_active == True
+        )
+    )
+    user = result.first()
+    if user is None:
+        raise credentials_exception
+
+    new_refresh_token = create_refresh_token(
+        data={"sub": user.email, "role": user.role, "id": user.id}
+    )
+
+    return {
+        "refresh_token": new_refresh_token,
+        "token_type": "bearer",
+    }
+
+
+@router.post("/refresh_access-token")
+async def refresh_access_token(
+    body: RefreshTokenRequest,
+    db: AsyncSession = Depends(get_async_db)):
+    """
+    Получает refresh-токен в теле запроса и создает новый access-токен.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate refresh token",
+        headers={"WWW-Authenticate": "Bearer"}
+    )
+    refresh_token = body.refresh_token
+    try:
+        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str | None = payload.get("sub")
+        token_type: str | None = payload.get("token_type")
+
+        if email is None or token_type != "refresh":
+            raise credentials_exception
+    except jwt.ExpiredSignatureError:
+        raise credentials_exception
+    except jwt.PyJWTError:
+        raise credentials_exception
+    user = await db.scalar(select(UserModel).where(
+        UserModel.email == email,
+        UserModel.is_active == True
+        ))
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User with this email not found"
+        )
+    access_token = create_access_token(data={"sub": user.email, "role": user.role, "id": user.id})
+    return {"access_token": access_token}
