@@ -8,3 +8,4 @@ app/migrations/
 app/migrations/__pycache__/
 alembic.ini
 APIcart.db
+.env
