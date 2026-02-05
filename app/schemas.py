@@ -71,4 +71,7 @@ class UserAnswer(BaseModel):
 
 
 class RefreshTokenRequest(BaseModel):
+    """
+    Модель для ответа refresh-токена
+    """
     refresh_token: str
