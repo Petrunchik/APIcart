@@ -1,7 +1,6 @@
 .venv
 app/__pycache__/
 app/routers/__pycache__/
-app/database.py
 app/models/__pycache__/
 app/models/check_table.py
 app/migrations/
@@ -9,3 +8,4 @@ app/migrations/__pycache__/
 alembic.ini
 APIcart.db
 .env
+.idea
