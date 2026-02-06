@@ -9,10 +9,9 @@ from sqlalchemy import select
 from app.models.users import User as UserModel
 from app.config import SECRET_KEY, ALGORITHM
 from app.db_depends import get_async_db
+from app.config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
 
 
-ACCESS_TOKEN_EXPIRE_MINUTES = 15
-REFRESH_TOKEN_EXPIRE_DAYS = 7
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="users/token")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -35,7 +34,7 @@ def create_access_token(data: dict):
     Создает access-токен
     """
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({
         "exp": expire,
         "token_type": "access"
@@ -48,7 +47,7 @@ def create_refresh_token(data: dict):
     Создает refresh-токен с "token_type": "refresh"
     """
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    expire = datetime.now(timezone.utc) + timedelta(days=int(REFRESH_TOKEN_EXPIRE_DAYS))
     to_encode.update({
         "exp": expire,
         "token_type": "refresh"
@@ -96,4 +95,25 @@ def get_current_seller(current_user: UserModel = Depends(get_current_user)):
     """
     if current_user.role != "seller":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only sellers can perform this action")
+    return current_user
+
+
+def get_current_buyer(current_user: UserModel = Depends(get_current_user)):
+    """
+    Проверяет, что пользователь является покупателем.
+    """
+    if current_user.role != "buyer":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only buyers can perform this action")
+    return current_user
+
+
+def get_current_admin_or_buyer(current_user: UserModel = Depends(get_current_user)):
+    """
+    Проверяет, что пользователь является покупателем или администратором.
+    """
+    if (current_user.role != "buyer") and (current_user.role != "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the author or the administrator can perform this action"
+        )
     return current_user
