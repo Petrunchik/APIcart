@@ -47,6 +47,8 @@ class ProductAnswer(ProductCreate):
     id: int = Field(..., description="ID товара.")
     is_active: bool = Field(..., description="Активность товара.")
     rating: Decimal = Field(default=0.0, description="Рейтинг товара")
+    created_at: datetime = Field(default=datetime.now(), description="Время создания записи.")
+    updated_at: datetime = Field(default=datetime.now(), description="Время обновления записи.")
 
     model_config = ConfigDict(from_attributes=True)
 
