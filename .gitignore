@@ -9,3 +9,4 @@ alembic.ini
 APIcart.db
 .env
 .idea
+app/.DS_Store
