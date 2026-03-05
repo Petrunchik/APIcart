@@ -1,6 +1,9 @@
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from pydantic import BaseModel, Field, ConfigDict, EmailStr, ValidationError
 from decimal import Decimal
 from datetime import datetime
+from typing import Annotated
+from fastapi import Form
+from fastapi.exceptions import RequestValidationError
 
 class CategoryCreate(BaseModel):
     """
@@ -33,9 +36,27 @@ class ProductCreate(BaseModel):
     name: str = Field(..., min_length=3, max_length=100, description="Название категории (3-100 символов).")
     description: str | None = Field(None, max_length=500, description="Описание товара, не более 500 символов.")
     price: Decimal = Field(..., gt=0, decimal_places=2, description="Цена товара, больше 0.")
-    image_url: str | None = Field(None, max_length=200, description="Ссылка на изображение товара.")
     stock: int = Field(..., ge=0, description="Остаток на складе, не меньше 0.")
     category_id: int = Field(..., description="ID категориии, к которой относится товар.")
+    @classmethod
+    def as_form(
+            cls,
+            name: Annotated[str, Form(...)],
+            price: Annotated[Decimal, Form(...)],
+            stock: Annotated[int, Form(...)],
+            category_id: Annotated[int, Form(...)],
+            description: Annotated[str | None, Form()] = None,
+    ) -> "ProductCreate":
+        try:
+            return cls(
+                name=name,
+                description=description,
+                price=price,
+                stock=stock,
+                category_id=category_id,
+            )
+        except ValidationError as er:
+            raise RequestValidationError(er.errors())
 
 
 class ProductAnswer(ProductCreate):
@@ -49,6 +70,7 @@ class ProductAnswer(ProductCreate):
     rating: Decimal = Field(default=0.0, description="Рейтинг товара")
     created_at: datetime = Field(default=datetime.now(), description="Время создания записи.")
     updated_at: datetime = Field(default=datetime.now(), description="Время обновления записи.")
+    image_url: str
 
     model_config = ConfigDict(from_attributes=True)
 
