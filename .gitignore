@@ -10,3 +10,4 @@ APIcart.db
 .env
 .idea
 app/.DS_Store
+info.log
